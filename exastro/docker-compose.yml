@@ -1,0 +1,48 @@
+version: '3.7'
+services:
+  mariadb:
+    # image: mariadb:10.4.8
+    image: mariadb:${DB_VERSION:-latest}
+    healthcheck:
+      test: 
+        - |
+          mysqladmin ping --silent
+          mysql -u root -p${DB_ADMIN_PASSWORD} -e 'select 1;'
+      interval: 3s
+      retries: 200
+    volumes:
+      - ../.volumes/mariadb/data:/var/lib/mysql
+      - ./mariadb/conf/custom.cnf:/etc/mysql/conf.d/custom.cnf
+    environment:
+      - TZ=Asia/Tokyo
+      - MARIADB_ROOT_PASSWORD=${DB_ADMIN_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${DB_ADMIN_PASSWORD}
+    ports:
+      - "0.0.0.0:3306:3306"
+    networks:
+      - exastro
+      - default
+
+  gitlab:
+    image: 'gitlab/gitlab-ce:${GITLAB_VERSION:-latest}'
+    restart: always
+    hostname: ${GITLAB_HOST}
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url '${GITLAB_PROTOCOL}://${GITLAB_HOST}:${GITLAB_PORT}'
+        nginx['listen_port'] = ${GITLAB_PORT}
+    ports:
+      - "0.0.0.0:40080:40080"
+    volumes:
+      - ../.volumes/gitlab/config:/etc/gitlab
+      - ../.volumes/gitlab/logs:/var/log/gitlab
+      - ../.volumes/gitlab/data:/var/opt/gitlab
+    shm_size: '256m'
+    networks:
+      - exastro
+      - default
+
+networks:
+  exastro:
+    name: "exastro_${NETWORK_ID}"
+
